@@ -1,0 +1,224 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   نظام تصميم "ثقافتنا" — الهوية التراثية
+   Teal-900: #0F4C5C | Teal-700: #14708A
+   Orange: #E36414     | Gold: #D4AF37
+   BG: #F4F1EA         | Cards: #FFFFFF
+   ============================================ */
+@theme {
+  /* التراثي (Teal) */
+  --color-heritage-950: #082f3a;
+  --color-heritage-900: #0f4c5c;
+  --color-heritage-800: #12596d;
+  --color-heritage-700: #14708a;
+  --color-heritage-600: #1a85a3;
+  --color-heritage-500: #2e97b3;
+  --color-heritage-300: #8ec6d4;
+  --color-heritage-100: #dceaef;
+  --color-heritage-50: #eef6f8;
+
+  /* البرتقالي (Flame) */
+  --color-flame-700: #b34a0b;
+  --color-flame-600: #cc570f;
+  --color-flame-500: #e36414;
+  --color-flame-400: #ef7b35;
+  --color-flame-100: #fceadb;
+
+  /* الذهبي (Gold) */
+  --color-gold-700: #9c7f1c;
+  --color-gold-600: #b8941f;
+  --color-gold-500: #d4af37;
+  --color-gold-400: #e0c158;
+  --color-gold-100: #f7edca;
+
+  /* الرملي (Sand) — خلفية الصفحة */
+  --color-sand: #f4f1ea;
+  --color-sand-dark: #eae5da;
+  --color-sand-darker: #ddd6c6;
+
+  /* الظلال الناعمة الموحدة — مُسماة card لتجنب تعارض الأسماء مع بقية النظام */
+  --shadow-card: 0 4px 14px rgba(15, 76, 92, 0.07);
+  --shadow-card-lg: 0 10px 28px rgba(15, 76, 92, 0.12);
+  --shadow-glow-gold: 0 4px 18px rgba(212, 175, 55, 0.35);
+}
+
+@theme inline {
+  --font-sans: var(--font-tajawal);
+  --font-heading: var(--font-cairo);
+  --font-body: var(--font-tajawal);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* حواف موحدة: 16px للبطاقات */
+  --radius: 1rem;
+  --background: #f4f1ea;
+  --foreground: #14333c;
+  --card: #ffffff;
+  --card-foreground: #14333c;
+  --popover: #ffffff;
+  --popover-foreground: #14333c;
+  --primary: #0f4c5c;
+  --primary-foreground: #ffffff;
+  --secondary: #eef6f8;
+  --secondary-foreground: #0f4c5c;
+  --muted: #ece7dd;
+  --muted-foreground: #6b7a80;
+  --accent: #f7edca;
+  --accent-foreground: #7c6414;
+  --destructive: #c0392b;
+  --border: rgba(15, 76, 92, 0.1);
+  --input: rgba(15, 76, 92, 0.14);
+  --ring: #d4af37;
+  --chart-1: #0f4c5c;
+  --chart-2: #14708a;
+  --chart-3: #e36414;
+  --chart-4: #d4af37;
+  --chart-5: #8ec6d4;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14333c;
+  --sidebar-primary: #0f4c5c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef6f8;
+  --sidebar-accent-foreground: #0f4c5c;
+  --sidebar-border: rgba(15, 76, 92, 0.1);
+  --sidebar-ring: #d4af37;
+}
+
+.dark {
+  --background: #082f3a;
+  --foreground: #f4f1ea;
+  --card: #0f4c5c;
+  --card-foreground: #f4f1ea;
+  --popover: #0f4c5c;
+  --popover-foreground: #f4f1ea;
+  --primary: #d4af37;
+  --primary-foreground: #082f3a;
+  --secondary: #12596d;
+  --secondary-foreground: #f4f1ea;
+  --muted: #12596d;
+  --muted-foreground: #8ec6d4;
+  --accent: #12596d;
+  --accent-foreground: #f4f1ea;
+  --destructive: #e74c3c;
+  --border: rgba(244, 241, 234, 0.12);
+  --input: rgba(244, 241, 234, 0.16);
+  --ring: #d4af37;
+  --sidebar: #0f4c5c;
+  --sidebar-foreground: #f4f1ea;
+  --sidebar-primary: #d4af37;
+  --sidebar-primary-foreground: #082f3a;
+  --sidebar-accent: #12596d;
+  --sidebar-accent-foreground: #f4f1ea;
+  --sidebar-border: rgba(244, 241, 234, 0.12);
+  --sidebar-ring: #d4af37;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* إمكانية الوصول: احترام تقليل الحركة */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* تأثير الزجاجية للشريط العلوي */
+  .glass-header {
+    background: rgba(244, 241, 234, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  /* تأثير الزجاجية لشريط التنقل السفلي */
+  .glass-tabbar {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  }
+
+  /* إطار التطبيق على الشاشات الكبيرة */
+  .app-frame {
+    box-shadow: 0 0 0 1px rgba(15, 76, 92, 0.06),
+      0 12px 48px rgba(15, 76, 92, 0.1);
+  }
+
+  /* شريط تمرير ذهبي رفيع */
+  .scrollbar-thin-gold {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gold-400) transparent;
+  }
+
+  /* رابط تخطّي المحتوى — إمكانية الوصول (يظهر عند التنقل بلوحة المفاتيح) */
+  .skip-to-content {
+    position: absolute;
+    top: -100px;
+    right: 0;
+    z-index: 9999;
+    background: var(--color-heritage-900);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 0 0 0 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: top 0.2s ease;
+  }
+
+  .skip-to-content:focus,
+  .skip-to-content:focus-visible {
+    top: 0;
+    outline: 3px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+}

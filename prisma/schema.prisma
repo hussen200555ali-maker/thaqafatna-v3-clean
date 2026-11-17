@@ -1,0 +1,287 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/* ============================================================
+   نماذج منصة «ثقافتنا» — مطابقة 1:1 لأشكال صفوف لوحة الإدارة
+   (AdminLevelRow / AdminPuzzleRow في src/lib/game/normalize.ts)
+
+   فلسفة التخزين: حقول مسطّحة «مخزنية» (خيارات مفصولة بـ | وJSON
+   نصي) — وطبقة التطبيع وحدها تفهمها وتحوّلها لعقد الواجهة.
+   ============================================================ */
+
+/** فصل تعليمي — يجمع المراحل تحت عنوان مشترك */
+model Chapter {
+  id     String  @id @default(cuid())
+  title  String
+  order  Int     @default(0)
+  levels Level[]
+}
+
+/** مرحلة لعب — مطابقة لنموذج Level في لوحة الإدارة */
+model Level {
+  id                     String   @id
+  title                  String
+  /** easy | medium | hard (أو ما يقابلها عربياً — تطبّعه normalize) */
+  difficulty             String?
+  /** بالثواني — صفر أو null يعني بلا وقت */
+  timeLimit              Int?
+  reward                 Int?
+  hintCost               Int?
+  /** JSON مصفوفة أو مفصولة بـ | */
+  learningGoals          String?
+  educationalDescription String?
+  chapterId              String?
+  order                  Int      @default(0)
+  chapter                Chapter? @relation(fields: [chapterId], references: [id])
+  puzzles                Puzzle[]
+}
+
+/** لغز واحد — الحقول المسطّحة كما تراها نماذج لوحة الإدارة */
+model Puzzle {
+  id               String        @id
+  /** text | image | images4 | emoji | scrambled | crossword | fillblank
+   *  | matching | multiple | audio | logic | progressive | mixed */
+  puzzleType       String
+  clue             String?
+  /** الإجابة النصية للأنواع الكلامية */
+  text             String?
+  /** الخيارات — مفصولة بـ | */
+  options          String?
+  /** فهرس الخيار الصحيح (من صفر) */
+  correctOption    Int?
+  /** لوحة الحروف — مفصولة بـ | أو نصاً متصلاً */
+  availableLetters String?
+  emojis           String?
+  imageUrl         String?
+  image2Url        String?
+  image3Url        String?
+  image4Url        String?
+  audioUrl         String?
+  /** JSON حرّ لبيانات اللغز الذهني (متتالية / شاذ ...) */
+  logicData        String?
+  /** أزواج الربط — JSON نصي [{left,right}] أو left:right|... */
+  matchPairs       String?
+  /** نص إكمال الفراغات مع علامات ___ أو JSON مقاطع */
+  fillBlanks       String?
+  /** كلمات المكافأة للمبعثرة — مفصولة بـ | */
+  bonusWords       String?
+  /** إجابات فراغات مرتبة — مفصولة بـ | */
+  blankAnswers     String?
+  /** تلميحات متدرجة — JSON مصفوفة نصية */
+  hints            String?
+  hint             String?
+  explanation      String?
+  points           Int?
+  hintCost         Int?
+  category         String?
+  /** ترتيب اللغز داخل مرحلته */
+  order            Int?
+  levelId          String?
+  level            Level?        @relation(fields: [levelId], references: [id])
+
+  /** خلايا الشبكة المتقاطعة (علاقة 1:N) */
+  cells            Cell[]
+  /** كلمات الشبكة المتقاطعة (علاقة 1:N) */
+  words            Word[]
+
+  /** محطات البوس — البوس أبو المحطات */
+  parentLinks      MixedStage[]  @relation("ParentPuzzle")
+  /** إن كان هذا اللغز محطة داخل بوس — من يملكه */
+  stageLinks       MixedStage[]  @relation("StagePuzzle")
+}
+
+/** خلية شبكة متقاطعة — null أو فارغ = خلية معطّلة */
+model Cell {
+  id       String  @id @default(cuid())
+  puzzleId String
+  row      Int
+  col      Int
+  letter   String?
+  /** رقم بداية الكلمة إن وجد */
+  number   Int?
+  puzzle   Puzzle  @relation(fields: [puzzleId], references: [id])
+
+  @@index([puzzleId])
+}
+
+/** كلمة شبكة متقاطعة — الاتجاه: across|down أو أفقي|رأسي */
+model Word {
+  id        String  @id @default(cuid())
+  puzzleId  String
+  number    Int
+  direction String
+  row       Int
+  col       Int
+  length    Int?
+  clue      String?
+  answer    String
+  puzzle    Puzzle  @relation(fields: [puzzleId], references: [id])
+
+  @@index([puzzleId])
+}
+
+/** ربط محطات المرحلة المختلطة (بوس) — جدول وصل مرتّب */
+model MixedStage {
+  id             String @id @default(cuid())
+  /** اللغز الأب (نوعه mixed) */
+  parentPuzzleId String
+  /** اللغز المحطة (أي نوع آخر) */
+  stagePuzzleId  String
+  order          Int    @default(0)
+  parentPuzzle   Puzzle @relation("ParentPuzzle", fields: [parentPuzzleId], references: [id])
+  stagePuzzle    Puzzle @relation("StagePuzzle", fields: [stagePuzzleId], references: [id])
+
+  @@index([parentPuzzleId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/* ============================================================
+   نماذج المكتبة — فهرس كتب «ثقافتنا» لإدارة المحتوى الموحدة
+   ============================================================ */
+
+/** تصنيف كتب — يجمع الكتب تحت عنوان مشترك */
+model BookCategory {
+  id    String @id @default(cuid())
+  title String
+  icon  String?
+  order Int    @default(0)
+  books Book[]
+}
+
+/** كتاب في المكتبة */
+model Book {
+  id          String         @id @default(cuid())
+  title       String
+  author      String?
+  description String?
+  /** draft | published */
+  status      String         @default("published")
+  categoryId  String?
+  category    BookCategory?  @relation(fields: [categoryId], references: [id])
+  order       Int            @default(0)
+  chapters    BookChapter[]
+  reviews     BookReview[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+/** مراجعة كتاب — من القرّاء، تُعرض بعد اعتماد الإشراف */
+model BookReview {
+  id        String   @id @default(cuid())
+  bookId    String
+  book      Book     @relation(fields: [bookId], references: [id])
+  /** اسم المراجع كما أدخله (افتراضاً «زائر») */
+  author    String
+  /** 1 إلى 5 نجوم */
+  rating    Int      @default(5)
+  comment   String
+  /** pending | approved | rejected */
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  @@index([bookId, status])
+}
+
+/** فصل داخل كتاب */
+model BookChapter {
+  id      String @id @default(cuid())
+  bookId  String
+  book    Book   @relation(fields: [bookId], references: [id])
+  title   String
+  order   Int    @default(0)
+  /** نص الفصل للقراءة — فقرات مفصولة بسطرين جديد \n\n */
+  content String?
+}
+
+/* ============================================================
+   نماذج المجتمع والنظام — لاعبون ورسائل وفريق وسجل وإعدادات
+   ============================================================ */
+
+/** ملف لاعب — مزامنة محلية (deviceId) حتى نظام الحسابات */
+model PlayerProfile {
+  id              String   @id @default(cuid())
+  deviceId        String   @unique
+  name            String   @default("ضيف ثقافتنا")
+  points          Int      @default(0)
+  stars           Int      @default(0)
+  badgesCount     Int      @default(0)
+  coins           Int      @default(120)
+  levelsCompleted Int      @default(0)
+  lastActiveAt    DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/** رسالة دعم — من نموذج «تواصل معنا» في تطبيق اللاعب */
+model SupportMessage {
+  id         String   @id @default(cuid())
+  senderName String   @default("زائر")
+  /** suggestion | bug | request | other */
+  kind       String   @default("suggestion")
+  subject    String
+  body       String
+  /** رد الإشراف — يظهر للاعب عند جلب رسائله */
+  reply      String?
+  /** new | read | archived */
+  status     String   @default("new")
+  deviceId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/** عضو فريق بأدوار الصلاحيات */
+model TeamMember {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  /** admin | editor | viewer */
+  role      String   @default("editor")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/** قيد سجل تدقيق دائم — كل عمليات لوحة الإدارة */
+model AuditEntry {
+  id        String   @id @default(cuid())
+  /** إنشاء | تعديل | حذف */
+  action    String
+  entity    String
+  detail    String
+  createdAt DateTime @default(now())
+}
+
+/** إعداد منصة — مفتاح/قيمة نصية */
+model PlatformSetting {
+  key   String @id
+  value String
+}
