@@ -12,7 +12,7 @@
  *     وشاذ)، سُلّم تلميحات متدرجة، ثم بوابة بوس مختلطة من
  *     ثلاث محطات عبر جدول الوصل MixedStage.
  *
- * التشغيل: bun run db:seed
+ * التشغيل: node scripts/seed-all.mjs (الأساس ضمن سلسلة البذر الموحدة)
  * عناصرية (Idempotent): يحذف المرحلتين المعاديتين إن وُجدتا ثم
  * يعيد إنشاءهما — فلا تتضاعف البيانات بتكرار التشغيل.
  */
@@ -107,8 +107,10 @@ async function main() {
   /* ============================================================
      الفصل الثاني — المرحلة 2: ألغاز مصوّرة (من محتوى fixtures)
      ============================================================ */
-  const chapter2 = await prisma.chapter.create({
-    data: { id: "chapter-2", title: "الفصل الثاني — لوحة الألغاز المصوّرة", order: 2 },
+  const chapter2 = await prisma.chapter.upsert({
+    where: { id: "chapter-2" },
+    update: {},
+    create: { id: "chapter-2", title: "الفصل الثاني — لوحة الألغاز المصوّرة", order: 2 },
   });
 
   const level2 = await prisma.level.create({
@@ -209,8 +211,10 @@ async function main() {
   /* ============================================================
      الفصل الثالث — المرحلة 3: حصن الحكماء (محتوى المرحلة الثالثة)
      ============================================================ */
-  const chapter3 = await prisma.chapter.create({
-    data: { id: "chapter-3", title: "الفصل الثالث — حصن الحكماء", order: 3 },
+  const chapter3 = await prisma.chapter.upsert({
+    where: { id: "chapter-3" },
+    update: {},
+    create: { id: "chapter-3", title: "الفصل الثالث — حصن الحكماء", order: 3 },
   });
 
   const level3 = await prisma.level.create({
