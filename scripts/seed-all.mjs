@@ -18,10 +18,26 @@
  *
  * التشغيل: npm run db:seed
  * يعمل بأول وقت تشغيل متاح: Bun إن وُجد، وإلا npx tsx.
+ * يفضّل الرابط المباشر (DIRECT_URL) وقت البناء — راجع الملاحظة أدناه.
  */
 
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
+
+/* ============================================================
+   الاتصال وقت البناء: الرابط المباشر (DIRECT_URL) أولاً
+   ============================================================
+   البذر يعمل داخل آلة البناء (Vercel) كعمليات متتابعة طويلة الأمد،
+   والأنسب له الرابط المباشر / Session Pooler (DIRECT_URL على المنفذ
+   5432) الذي يمنح كل اتصال جلسة مخصّصة تدعم الجُمل المُهيّأة كاملة.
+   أما Transaction Pooler (المنفذ 6543) فمخصّص لزمن التشغيل فقط ولا
+   يدعم prepared statements عبر الاتصالات المشتركة، واستخدامه وقت
+   البناء يسبب خطأ PostgreSQL 42P05 «prepared statement already
+   exists» لأن الجُمل القديمة تعلق على الاتصالات المعاد تدويرها. */
+if (process.env.DIRECT_URL && process.env.DIRECT_URL !== process.env.DATABASE_URL) {
+  console.log("— البذر عبر الرابط المباشر (DIRECT_URL) لتفادي تعارض الجُمل المُهيّأة مع الـ Pooler");
+  process.env.DATABASE_URL = process.env.DIRECT_URL;
+}
 
 const prisma = new PrismaClient();
 
@@ -44,15 +60,22 @@ function runScript(script) {
     { cmd: "bun", args: [script] },
     { cmd: "npx", args: ["tsx", script] },
   ];
+  let executed = false; // هل اشتغّل السكربت فعلاً (ولو انتهى بفشل)؟
   for (const { cmd, args } of attempts) {
     const result = spawnSync(cmd, args, {
       stdio: "inherit",
       shell: process.platform === "win32",
     });
     if (!result.error && result.status === 0) return true;
-    // إما أن وقت التشغيل غير مثبّت (ENOENT) أو فشل السكربت — نجرب التالي
+    if (result.error) continue; // وقت التشغيل غير متوفر — نجرّب التالي
+    executed = true; // السكربت اشتغل وانتهى بخطأ — لا فائدة من إعادة المحاولة
+    break;
   }
-  console.error(`✗ تعذّر تشغيل ${script} — ثبّت Bun أو نفّذ npm install (يتضمن tsx)`);
+  if (executed) {
+    console.error(`✗ فشل تشغيل ${script} — راجع رسالة الخطأ المطبوعة أعلاه مباشرة.`);
+  } else {
+    console.error(`✗ تعذّر تشغيل ${script} — ثبّت Bun أو نفّذ npm install (يتضمن tsx)`);
+  }
   return false;
 }
 
@@ -60,12 +83,13 @@ async function main() {
   let levelCount;
   try {
     levelCount = await prisma.level.count();
-  } catch {
+  } catch (error) {
     console.error(
       "✗ تعذّر الاتصال بقاعدة البيانات أو الجداول غير مهيأة بعد.\n" +
         "  تأكد من متغيري DATABASE_URL و DIRECT_URL ثم شغّل أولاً:\n" +
         "  npm run db:deploy   (أو: npx prisma db push)"
     );
+    console.error(`  السبب: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 
