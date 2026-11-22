@@ -30,7 +30,7 @@ async function exists(id: string): Promise<boolean> {
 
 async function createPuzzle(data: {
   id: string;
-  levelId: string;
+  levelId: string | null;
   puzzleType: string;
   order: number;
   clue: string;

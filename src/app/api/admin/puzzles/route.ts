@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 /**
@@ -126,7 +127,9 @@ export async function POST(request: Request) {
     /* معرّف صريح — نموذج Puzzle بلا قيمة افتراضية في القاعدة */
     data.id = `pz-${crypto.randomUUID().slice(0, 8)}`;
 
-    const puzzle = await db.puzzle.create({ data });
+    const puzzle = await db.puzzle.create({
+      data: data as Prisma.PuzzleUncheckedCreateInput,
+    });
     return NextResponse.json({ ok: true, puzzle });
   } catch (error) {
     console.error("[api/admin/puzzles] تعذّر إنشاء اللغز:", error);

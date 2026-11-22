@@ -239,7 +239,7 @@ export function GameContainer({
       coinsLeft: coins,
       levelReward: level.reward,
       difficulty: level.difficulty,
-      chapterTitle: level.chapterTitle,
+      chapterTitle: level.chapterTitle ?? null,
     });
 
     /* الاحتفال بالأوسمة الجديدة — وسام بعد وسام بأناقة */

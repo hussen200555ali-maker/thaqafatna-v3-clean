@@ -8,17 +8,8 @@
 
 import { motion } from "framer-motion";
 import { BadgeCheck, BookCheck, Medal, Star } from "lucide-react";
+import { useRiyadhDateLabel } from "@/lib/riyadh-date";
 import { heroTexts, type HeroStats } from "./data";
-
-/** تنسيق التاريخ الهجري/الميلادي بالعربية */
-function formatArabicDate(): string {
-  return new Intl.DateTimeFormat("ar-EG", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
-}
 
 /** تحويل الرقم إلى صيغة عربية للترتيب (١ → الأولى، ٢ → الثانية…) */
 function arabicOrdinal(level: number): string {
@@ -42,6 +33,8 @@ interface HeroCardProps {
 }
 
 export function HeroCard({ stats }: HeroCardProps) {
+  /* التاريخ من لقطة عميل فقط — الخادم يرسل نصاً فارغاً فلا انفصام إرواء */
+  const todayLabel = useRiyadhDateLabel();
   const progress = Math.min(100, Math.max(0, stats.progressPercent));
   /* عنوان التقدم ديناميكي — يتبع المستوى القادم لا نصاً ثابتاً */
   const progressLabel = `التقدم نحو المرحلة ${arabicOrdinal(
@@ -73,8 +66,9 @@ export function HeroCard({ stats }: HeroCardProps) {
 
       {/* الصف العلوي: التاريخ (يمين) + شارة المستوى (يسار) */}
       <div className="relative flex items-start justify-between gap-3">
-        <p className="pt-1 text-[11px] font-medium leading-5 text-white/75">
-          {formatArabicDate()}
+        {/* min-h-5 يحفظ ارتفاع السطر قبل وصول لقطة العميل فلا قفزة تخطيط */}
+        <p className="min-h-5 pt-1 text-[11px] font-medium leading-5 text-white/75">
+          {todayLabel}
         </p>
         <span className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold backdrop-blur-sm">
           <Star className="size-3.5 fill-gold-500 text-gold-500" aria-hidden="true" />

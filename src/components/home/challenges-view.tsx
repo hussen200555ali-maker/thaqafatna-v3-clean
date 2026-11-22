@@ -30,7 +30,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useProgress, type ProgressMap } from "@/lib/game/progress-store";
-import { todayKey } from "@/lib/game/player-sync";
+import {
+  formatFullArabicDate,
+  useRiyadhDayKey,
+} from "@/lib/riyadh-date";
 
 /** واجهة خصائص الشاشة — الأب يجلب المرحلة ويركّبها */
 interface ChallengesViewProps {
@@ -98,21 +101,6 @@ function computeStreak(dayKeys: string[], today: string): number {
   return streak;
 }
 
-/** تاريخ اليوم كامل بالعربية (بتوقيت الرياض — توحيداً مع مفتاح اليوم) */
-function formatFullArabicDate(key: string): string {
-  try {
-    return new Intl.DateTimeFormat("ar-EG", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      timeZone: "Asia/Riyadh",
-    }).format(new Date(key + "T00:00:00Z"));
-  } catch {
-    return "";
-  }
-}
-
 /** شكل مهمة أسبوعية — قيمة حقيقية تُقارن بهدفها */
 interface WeeklyMission {
   id: string;
@@ -157,7 +145,7 @@ export function ChallengesView({
   }, []);
 
   /* ===== حالة تحدي اليوم وسلسلة الأيام — من التقدم المحلي ===== */
-  const today = todayKey();
+  const today = useRiyadhDayKey();
   const dailyEntry = progress[DAILY_PREFIX + today];
   const dailyDone = (dailyEntry?.stars ?? 0) > 0;
   const dailyStars = dailyEntry?.stars ?? 0;

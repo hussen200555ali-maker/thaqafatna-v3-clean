@@ -220,7 +220,11 @@ function asNumber(value: unknown): number | null {
    ============================================================ */
 
 /** بناء الحقول المشتركة من الصف (BaseQuestion) */
-function baseFields(row: AdminPuzzleRow, type: PuzzleType, fallbackHintCost: number) {
+function baseFields<T extends PuzzleType>(
+  row: AdminPuzzleRow,
+  type: T,
+  fallbackHintCost: number,
+) {
   return {
     id: row.id,
     type,

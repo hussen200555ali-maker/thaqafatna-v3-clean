@@ -236,7 +236,11 @@ export function CrosswordQuestion({
   /* ===== لوحة الحروف ===== */
 
   const trayLetters = useMemo(
-    () => q.letters ?? Array.from(new Set(q.cells.map((c) => c.letter))),
+    () =>
+      q.letters ??
+      Array.from(
+        new Set(q.cells.map((c) => c.letter).filter((l): l is string => Boolean(l))),
+      ),
     [q.letters, q.cells],
   );
 

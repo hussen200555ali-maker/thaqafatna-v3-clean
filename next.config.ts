@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typescript: {
-    // نفس سلوك البناء المعتمد سابقاً — لا يوقف النشرَ خطأُ أنواع
-    ignoreBuildErrors: true,
-  },
+  /* الأخطاء تُفحص صراحةً عبر `bunx tsc --noEmit` في CI — لا يُتجاهل أي خطأ نوع */
   reactStrictMode: false,
 };
 
