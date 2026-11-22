@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isRecordNotFound } from "@/lib/prisma-errors";
 
 /**
  * تفاصيل مرحلة وتحريرها
@@ -130,10 +131,7 @@ export async function PATCH(
     });
   } catch (error) {
     /* خطأ Prisma P2025 = السجل غير موجود */
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to update not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا توجد مرحلة بهذا المعرّف" },
         { status: 404 },

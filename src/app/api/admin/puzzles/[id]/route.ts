@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isRecordNotFound } from "@/lib/prisma-errors";
 
 /**
  * تحرير لغز وحذفه
@@ -83,10 +84,7 @@ export async function PATCH(
     const puzzle = await db.puzzle.update({ where: { id }, data });
     return NextResponse.json({ ok: true, puzzle });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to update not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا يوجد لغز بهذا المعرّف" },
         { status: 404 },

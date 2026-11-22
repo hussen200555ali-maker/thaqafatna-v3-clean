@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isRecordNotFound } from "@/lib/prisma-errors";
 
 /**
  * تحرير تصنيف وحذفه
@@ -78,10 +79,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to update not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا يوجد تصنيف بهذا المعرّف" },
         { status: 404 },
@@ -115,10 +113,7 @@ export async function DELETE(
     await db.bookCategory.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to delete not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا يوجد تصنيف بهذا المعرّف" },
         { status: 404 },

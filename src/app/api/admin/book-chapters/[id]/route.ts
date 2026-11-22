@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { isRecordNotFound } from "@/lib/prisma-errors";
 import { shapeBookChapter } from "@/lib/admin/library";
 
 /**
@@ -66,10 +67,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, chapter: shapeBookChapter(chapter) });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to update not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا يوجد فصل بهذا المعرّف" },
         { status: 404 },
@@ -92,10 +90,7 @@ export async function DELETE(
     await db.bookChapter.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Record to delete not found")
-    ) {
+    if (isRecordNotFound(error)) {
       return NextResponse.json(
         { ok: false, error: "لا يوجد فصل بهذا المعرّف" },
         { status: 404 },
