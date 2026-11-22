@@ -35,6 +35,7 @@ import { AxisPanel } from "@/components/home/axis-panel";
 import { GameContainer } from "@/components/game/game-container";
 import { LevelLoading } from "@/components/game/level-loading";
 import { AdminPanel } from "@/components/admin/admin-panel";
+import { AdminLogin } from "@/components/admin/admin-login";
 import {
   useBadges,
   useCoins,
@@ -71,8 +72,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("home");
   const [activeAxis, setActiveAxis] = useState(culturalAxes[0].id);
 
-  /* ===== الوضع الإداري — اللوحة الشاملة فوق التطبيق ===== */
-  const [adminMode, setAdminMode] = useState(false);
+  /* ===== الإدارة: idle | checking | login | ok =====
+     لا تُعرض اللوحة إلا بعد تحقق الخادم من جلسة الإدارة */
+  const [adminState, setAdminState] = useState<
+    "idle" | "checking" | "login" | "ok"
+  >("idle");
 
   /* ===== شاشات ملء الإطار — تحدياتي وخريطة المعرفة =====
      تُفتحان من البطاقات المزدوجة وتُغلقان بمغادرة الرئيسية */
@@ -186,14 +190,17 @@ export default function Home() {
     };
   });
 
-  /** فتح لوحة التحكم الشاملة — إسكات الصوت والحفاظ على جلسة اللعب */
-  const openAdminPanel = () => {
+  /** فتح لوحة التحكم الشاملة — يتحقق الخادم من الجلسة أولاً */
+  const openAdminPanel = async () => {
     document.querySelectorAll("audio").forEach((audio) => audio.pause());
-    setAdminMode(true);
-    toast({
-      title: "لوحة التحكم الشاملة",
-      description: "إدارة المكتبة واللعبة والمجتمع والنظام — من قائمة واحدة",
-    });
+    setAdminState("checking");
+    try {
+      const response = await fetch("/api/admin/session", { cache: "no-store" });
+      const data = (await response.json()) as { ok?: boolean };
+      setAdminState(data.ok ? "ok" : "login");
+    } catch {
+      setAdminState("login");
+    }
   };
 
   /** اختيار محور ثقافي — تبديل فوري وبطاقة كتب المحور تحت الشبكة */
@@ -501,8 +508,14 @@ export default function Home() {
       {/* 8) لوحة التحكم الشاملة — نافذة كاملة فوق التطبيق:
           تُدار منها المكتبة واللعبة والمجتمع والنظام، وتعود
           للتطبيق بجلسة اللعب حية كما تُركت */}
-      {adminMode && (
-        <AdminPanel onExit={() => setAdminMode(false)} />
+      {adminState === "login" && (
+        <AdminLogin
+          onSuccess={() => setAdminState("ok")}
+          onCancel={() => setAdminState("idle")}
+        />
+      )}
+      {adminState === "ok" && (
+        <AdminPanel onExit={() => setAdminState("idle")} />
       )}
     </div>
   );
