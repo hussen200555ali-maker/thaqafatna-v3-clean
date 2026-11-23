@@ -229,6 +229,7 @@ export async function submitDailyAnswer(
   });
 
   let coins: number | null = null;
+  let rewarded = false;
   if (correct) {
     const reward = session.reward || settings.dailyChallengeReward;
     /* createMany + skipDuplicates ذري: أول طلب فقط يُنشئ القيد،
@@ -246,6 +247,7 @@ export async function submitDailyAnswer(
         skipDuplicates: true,
       });
       if (claimed.count !== 1) return;
+      rewarded = true;
 
       const profile = await tx.playerProfile.upsert({
         where: { deviceId: session.deviceId },
@@ -273,7 +275,9 @@ export async function submitDailyAnswer(
       correct,
       correctAnswer: correct ? null : dailyCorrectAnswer(question),
       explanation: question.explanation ?? null,
-      reward: correct ? session.reward || settings.dailyChallengeReward : 0,
+      /* المكافأة تُبلَّغ فقط حين يُنشأ قيد RewardLedger فعلاً —
+         الطلب المكرر يرى correct=true لكنه لم يُضف رصيداً */
+      reward: rewarded ? session.reward || settings.dailyChallengeReward : 0,
       coins,
       attemptsLeft: Math.max(0, MAX_ATTEMPTS - (session.attempts + 1)),
       completed: correct,
