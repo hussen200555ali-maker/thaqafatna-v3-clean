@@ -24,7 +24,10 @@ import type {
   QuestionResult,
   QuestionStatus,
 } from "@/lib/game/types";
-import { recordLevelResult } from "@/lib/game/progress-store";
+import {
+  recordLevelResult,
+  setCoins as writeStoredCoins,
+} from "@/lib/game/progress-store";
 import { BADGE_MAP } from "@/lib/game/badges";
 import { useToast } from "@/hooks/use-toast";
 import { FeedbackLayer } from "./feedback-layer";
@@ -35,6 +38,19 @@ import { QuestionShell } from "./question-shell";
 
 type Phase = "intro" | "question" | "summary";
 
+/** استجابة التحقق السيرفي لتحدي اليوم */
+interface DailyAnswerResponse {
+  ok: boolean;
+  correct?: boolean;
+  correctAnswer?: string | null;
+  explanation?: string | null;
+  reward?: number;
+  coins?: number | null;
+  attemptsLeft?: number;
+  completed?: boolean;
+  error?: string;
+}
+
 interface GameContainerProps {
   level: GameLevel;
   /** رصيد العملات الافتتاحي للاعب */
@@ -43,6 +59,8 @@ interface GameContainerProps {
   onExit: () => void;
   /** إيقاف مؤقت — عند تنقّل اللاعب لتبويب آخر (المؤقت يتوقف، اللعبة تبقى حية) */
   paused?: boolean;
+  /** رمز جلسة تحدي اليوم — وجوده يعني أن الحكم يجب أن يأتي من الخادم */
+  dailyToken?: string;
 }
 
 export function GameContainer({
@@ -50,7 +68,12 @@ export function GameContainer({
   initialCoins,
   onExit,
   paused = false,
+  dailyToken,
 }: GameContainerProps) {
+  const isDaily = dailyToken !== undefined;
+  const [serverAnswer, setServerAnswer] = useState<string | null>(null);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   /* ===== آلة الحالة ===== */
@@ -72,7 +95,9 @@ export function GameContainer({
   const question = level.questions[Math.min(qIndex, level.questions.length - 1)];
   const questionModule = getQuestionModule(question.type);
   const canConfirm =
-    questionModule.isComplete(question, answer) && status === "answering";
+    questionModule.isComplete(question, answer) &&
+    status === "answering" &&
+    !submitting;
 
   /* ===== المؤقت التنازلي — يعمل أثناء الأسئلة فقط، ويتوقف
      أثناء طبقة التغذية الراجعة حفاظاً على عدالة اللعب،
@@ -137,15 +162,103 @@ export function GameContainer({
     }
   };
 
-  /* ===== زر التأكيد — الحكم عبر منطق وحدة النوع ===== */
+  /* ===== زر التأكيد — في التحدي اليومي الخادم هو الحَكَم الوحيد.
+     نسخة السؤال القادمة من /api/daily-challenge بلا إجابة صحيحة،
+     فلا يمكن للمتصفح أن يحكم أو يمنح المكافأة بمفرده. ===== */
   const handleConfirm = () => {
     if (
       status !== "answering" ||
-      !questionModule.isComplete(question, answer)
+      !questionModule.isComplete(question, answer) ||
+      submitting
     )
       return;
-    const isCorrect = questionModule.checkAnswer(question, answer);
-    setStatus(isCorrect ? "correct" : "wrong");
+
+    if (!isDaily) {
+      const isCorrect = questionModule.checkAnswer(question, answer);
+      setStatus(isCorrect ? "correct" : "wrong");
+      return;
+    }
+
+    if (!dailyToken) return;
+
+    setSubmitting(true);
+    void (async () => {
+      try {
+        const response = await fetch("/api/daily-challenge/answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: dailyToken, answer }),
+        });
+        const data = (await response.json()) as DailyAnswerResponse;
+
+        if (response.status === 429) {
+          setAttemptsLeft(0);
+          setServerAnswer(
+            data.correctAnswer ??
+              (questionModule.correctAnswerText
+                ? questionModule.correctAnswerText(question)
+                : null),
+          );
+          setStatus("wrong");
+          toast({
+            title: "انتهت المحاولات",
+            description: "يمكنك محاولة تحدي الغد — المكافأة لم تُمنح",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.ok || typeof data.correct !== "boolean") {
+          toast({
+            title: "تعذّر التحقق من الإجابة",
+            description: data.error === "already_completed"
+              ? "أكملت هذا التحدي من قبل"
+              : "أعد المحاولة بعد لحظات",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (typeof data.attemptsLeft === "number") {
+          setAttemptsLeft(data.attemptsLeft);
+        }
+
+        if (data.correct) {
+          setServerAnswer(null);
+          /* الرصيد القادم من الخادم هو الحقيقة — نُحدّث المخزن المحلي
+             كي لا تُعيد مزامنة اللاعب كتابة قيمة قديمة فوق المكافأة */
+          if (typeof data.coins === "number") {
+            setCoins(data.coins);
+            writeStoredCoins(data.coins);
+          }
+          setStatus("correct");
+        } else {
+          setServerAnswer(data.correctAnswer ?? null);
+          setStatus("wrong");
+        }
+      } catch {
+        toast({
+          title: "تعذّر الاتصال",
+          description: "تحقق من الشبكة ثم أعد إرسال الإجابة",
+          variant: "destructive",
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    })();
+  };
+
+  /* ===== متابعة بعد إجابة خاطئة في التحدي اليومي: إعادة المحاولة
+     على نفس السؤال ما دامت المحاولات متبقية — لا تُحتسب نتيجة خاطئة
+     في التقدم، والمكافأة تُمنح مرة واحدة عند أول إجابة صحيحة ===== */
+  const handleDailyContinue = () => {
+    if (attemptsLeft === 0) {
+      setEndReason("completed");
+      setPhase("summary");
+      return;
+    }
+    setServerAnswer(null);
+    resetQuestionState();
   };
 
   /* ===== التقدّم التلقائي بعد الإجابة الصحيحة ===== */
@@ -237,7 +350,8 @@ export function GameContainer({
         level.timeLimit > 0 ? level.timeLimit - timeLeft : null,
       timeLimit: level.timeLimit,
       coinsLeft: coins,
-      levelReward: level.reward,
+      /* المكافأة اليومية تُمنح في الخادم (RewardLedger) — لا تُمنح محلياً مرتين */
+      levelReward: isDaily ? 0 : level.reward,
       difficulty: level.difficulty,
       chapterTitle: level.chapterTitle ?? null,
     });
@@ -310,11 +424,15 @@ export function GameContainer({
         status={feedbackStatus}
         question={question}
         correctAnswerText={
-          questionModule.correctAnswerText
-            ? questionModule.correctAnswerText(question)
-            : null
+          isDaily
+            ? serverAnswer
+            : questionModule.correctAnswerText
+              ? questionModule.correctAnswerText(question)
+              : null
         }
-        onContinue={() => advance("wrong")}
+        onContinue={() =>
+          isDaily ? handleDailyContinue() : advance("wrong")
+        }
       />
     </div>
   );

@@ -34,6 +34,7 @@ import { BookCategoriesPage } from "./pages/book-categories-page";
 import { BookChaptersPage } from "./pages/book-chapters-page";
 import { GameChaptersPage } from "./pages/game-chapters-page";
 import { LevelEditorPage } from "./pages/level-editor-page";
+import { DailyChallengePage } from "./pages/daily-challenge-page";
 import { QualityPage } from "./pages/quality-page";
 import { DifficultyPage } from "./pages/difficulty-page";
 import { SkillTreePage } from "./pages/skill-tree-page";
@@ -484,6 +485,8 @@ function AdminPageRouter({
           refreshQuality={refreshQuality}
         />
       );
+    case "daily-challenge":
+      return <DailyChallengePage />;
     case "quality":
       return <QualityPage navigate={navigate} refreshQuality={refreshQuality} />;
     case "difficulty":

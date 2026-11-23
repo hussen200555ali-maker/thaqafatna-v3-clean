@@ -40,7 +40,7 @@ interface MixedStageWithPuzzle {
 }
 
 /** صف لغز بكل العلاقات التي يحتاجها التطبيع */
-type PuzzleWithRelations = PrismaPuzzle & {
+export type PuzzleWithRelations = PrismaPuzzle & {
   cells: PrismaCell[];
   words: PrismaWord[];
   parentLinks: MixedStageWithPuzzle[];
@@ -51,7 +51,7 @@ type PuzzleWithRelations = PrismaPuzzle & {
    ============================================================ */
 
 /** تحويل صف لغز (بعلاقاته) إلى شكل AdminPuzzleRow */
-function mapPuzzleRow(puzzle: PuzzleWithRelations): AdminPuzzleRow {
+export function mapPuzzleRow(puzzle: PuzzleWithRelations): AdminPuzzleRow {
   return {
     id: puzzle.id,
     puzzleType: puzzle.puzzleType,
@@ -162,6 +162,22 @@ export async function getAdminLevelRow(
   }
 
   return null;
+}
+
+/** جلب لغز واحد بعلاقاته — يخدم بنك التحدي اليومي دون المرور بمرحلة */
+export async function getPuzzleRow(id: string): Promise<AdminPuzzleRow | null> {
+  const puzzle = await db.puzzle.findUnique({
+    where: { id },
+    include: {
+      cells: true,
+      words: true,
+      parentLinks: {
+        orderBy: { order: "asc" },
+        include: { stagePuzzle: { include: { cells: true, words: true } } },
+      },
+    },
+  });
+  return puzzle ? mapPuzzleRow(puzzle as PuzzleWithRelations) : null;
 }
 
 /* ============================================================

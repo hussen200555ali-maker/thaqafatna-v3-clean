@@ -10,6 +10,7 @@
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   FileText,
   KeyRound,
   LayoutDashboard,
@@ -37,6 +38,7 @@ export type AdminPageId =
   | "book-chapters"
   | "game-chapters"
   | "level-editor"
+  | "daily-challenge"
   | "quality"
   | "difficulty"
   | "skill-tree"
@@ -85,6 +87,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { id: "game-chapters", title: "فصول اللعبة", icon: Swords },
       { id: "level-editor", title: "محرر المراحل", icon: Puzzle },
+      { id: "daily-challenge", title: "تحدي اليوم", icon: CalendarDays },
       { id: "quality", title: "مدقّق الجودة", icon: ShieldCheck },
       { id: "difficulty", title: "موازنة الصعوبة", icon: Scale },
       { id: "skill-tree", title: "شجرة المهارات", icon: Network },
@@ -145,6 +148,11 @@ export const adminPageMeta: Record<
     title: "محرر المراحل",
     description:
       "تحرير بيانات المراحل وألغازها مباشرة من قاعدة لوحة الإدارة — المصدر الوحيد للحقيقة",
+  },
+  "daily-challenge": {
+    title: "تحدي اليوم",
+    description:
+      "بنك سؤال واحد يوميًا وتثبيت السؤال والجلسات الموقّعة — التحقق والمكافأة على الخادم",
   },
   quality: {
     title: "مدقّق الجودة",

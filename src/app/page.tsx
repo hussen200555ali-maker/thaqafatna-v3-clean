@@ -37,11 +37,12 @@ import { LevelLoading } from "@/components/game/level-loading";
 import { AdminPanel } from "@/components/admin/admin-panel";
 import { AdminLogin } from "@/components/admin/admin-login";
 import {
+  recordLevelResult,
   useBadges,
   useCoins,
   useProgress,
 } from "@/lib/game/progress-store";
-import { syncPlayerProgress } from "@/lib/game/player-sync";
+import { getDeviceId, syncPlayerProgress } from "@/lib/game/player-sync";
 import type { GameLevel } from "@/lib/game/types";
 import {
   beginnerLevels,
@@ -51,6 +52,17 @@ import {
   type DualCardItem,
   type QuickLink,
 } from "@/components/home/data";
+
+/** شكل استجابة تحدي اليوم — GET /api/daily-challenge */
+interface DailyChallengeResponse extends GameLevel {
+  date?: string;
+  dailyToken?: string;
+  dailyStatus?: "active" | "done";
+  dailyReward?: number;
+  coins?: number | null;
+  error?: string;
+  message?: string;
+}
 
 /** شكل استجابة فهرس المراحل — GET /api/levels */
 interface LevelsListResponse {
@@ -105,6 +117,10 @@ export default function Home() {
   const [activeLevel, setActiveLevel] = useState<GameLevel | null>(null);
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [levelLoading, setLevelLoading] = useState(false);
+  /* جلسة التحدي اليومي الموقّعة — تُرسل مع الإجابة للتحقق السيرفري.
+     undefined يعني أن المرحلة الحالية ليست تحدي اليوم إطلاقاً. */
+  const [dailyToken, setDailyToken] = useState<string | undefined>(undefined);
+  const [dailyInitialCoins, setDailyInitialCoins] = useState<number | null>(null);
 
   /* جلب الفهرس مرة واحدة عند التحميل — القائمة الثابتة بديل تلقائي.
      القفل هنا منطق أولي (الأولى مفتوحة والبقية مقفلة)؛ الحساب
@@ -227,6 +243,8 @@ export default function Home() {
       if (levelId !== selectedLevelId) setSessionNonce((n) => n + 1);
       setActiveLevel(normalized);
       setSelectedLevelId(levelId);
+      setDailyToken(undefined);
+      setDailyInitialCoins(null);
       toast({
         title: normalized.title,
         description: "وصلت مباشرة من قاعدة بيانات لوحة الإدارة",
@@ -243,27 +261,60 @@ export default function Home() {
     }
   };
 
-  /** تشغيل تحدي اليوم — جلسة حتمية تتبدل كل يوم، مفتاحها
-      daily-YYYY-MM-DD فتُمنح المكافأة كاملة أول مرة كل يوم */
+  /** تشغيل تحدي اليوم — سؤال واحد يوميًا بجلسة موقّعة.
+      الإجابة الصحيحة لا تصل إلى المتصفح؛ الحكم والمكافأة في الخادم. */
   const launchDailyChallenge = async () => {
     setLevelLoading(true);
     setActiveTab("game");
     try {
-      const response = await fetch("/api/daily-challenge");
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const level = (await response.json()) as GameLevel;
-      if (level.id !== selectedLevelId) setSessionNonce((n) => n + 1);
-      setActiveLevel(level);
-      setSelectedLevelId(level.id);
+      const deviceId = getDeviceId();
+      const response = await fetch(
+        `/api/daily-challenge?deviceId=${encodeURIComponent(deviceId)}`,
+        { cache: "no-store" },
+      );
+      const data = (await response.json()) as DailyChallengeResponse;
+      if (!response.ok) throw new Error(data.message ?? `HTTP ${response.status}`);
+
+      /* مكتمل سيرفرياً بالفعل — نُحدّث الحالة المحلية للعرض فقط،
+         ولا نفتح جلسة جديدة ولا نمنح مكافأة ثانية */
+      if (data.dailyStatus === "done") {
+        recordLevelResult(data.id, 3, 0, {
+          hintsUsed: 0,
+          timeTaken: null,
+          timeLimit: 0,
+          coinsLeft: typeof data.coins === "number" ? data.coins : coinsBalance,
+          levelReward: 0,
+          difficulty: data.difficulty ?? "medium",
+          chapterTitle: data.chapterTitle ?? null,
+        });
+        setActiveTab("home");
+        toast({
+          title: "أكملت تحدي اليوم بالفعل",
+          description: "السؤال الجديد ينتظرك غداً بتوقيت الرياض",
+        });
+        return;
+      }
+
+      if (data.id !== selectedLevelId) setSessionNonce((n) => n + 1);
+      setActiveLevel(data);
+      setSelectedLevelId(data.id);
+      setDailyToken(data.dailyToken ?? "");
+      setDailyInitialCoins(
+        typeof data.coins === "number" ? data.coins : null,
+      );
+      setOverlayView(null);
       toast({
-        title: level.title,
-        description: "خمسة ألغاز تتبدل كل يوم — بالتوفيق!",
+        title: data.title,
+        description: "سؤال واحد جديد كل يوم — أجب بشكل صحيح لتحصد المكافأة",
       });
-    } catch {
+    } catch (error) {
       setActiveTab("home");
       toast({
         title: "تعذّر تحميل تحدي اليوم",
-        description: "تحقق من الاتصال ثم أعد المحاولة",
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : "تحقق من الاتصال ثم أعد المحاولة",
         variant: "destructive",
       });
     } finally {
@@ -290,6 +341,8 @@ export default function Home() {
       setSessionNonce((n) => n + 1);
       setActiveLevel(level);
       setSelectedLevelId(level.id);
+      setDailyToken(undefined);
+      setDailyInitialCoins(null);
       toast({
         title: level.title,
         description: "اخترناها لك حسب تقدمك — بالتوفيق!",
@@ -493,8 +546,9 @@ export default function Home() {
             <GameContainer
               key={`${activeLevel.id}#${sessionNonce}`}
               level={activeLevel}
-              initialCoins={coinsBalance}
+              initialCoins={dailyInitialCoins ?? coinsBalance}
               paused={activeTab !== "game"}
+              dailyToken={dailyToken}
               onExit={() => setActiveTab("home")}
             />
           </div>

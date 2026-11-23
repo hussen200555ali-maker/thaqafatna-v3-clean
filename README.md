@@ -60,13 +60,22 @@ prisma generate && prisma migrate deploy && node scripts/seed-all.mjs && next bu
 منفصل — كل شيء مكوّن داخل الصفحة)، بعد تسجيل الدخول بنافذة الإدارة المحمية
 (راجع القسم 6).
 
-### الصفحات الـ 17 في 5 مجموعات
+### الصفحات الـ 18 في 5 مجموعات
 
 **عام:** لوحة التحكم — الإعدادات — سجل التدقيق — التقارير
 **المكتبة:** إدارة المكتبة (مركز قيادة) — الكتب — تصنيفات الكتب — فصول الكتب — المراجعات
-**اللعبة:** فصول اللعبة — محرر المراحل — مدقق الجودة — موازنة الصعوبة — شجرة المهارات
+**اللعبة:** فصول اللعبة — محرر المراحل — تحدي اليوم — مدقق الجودة — موازنة الصعوبة — شجرة المهارات
 **المجتمع:** اللاعبون والقراء — الرسائل — الأدوار والصلاحيات
 **النظام:** (ضمن الإعدادات)
+
+### سير عمل تحدي اليوم
+
+- **السؤال:** سؤال واحد يوميًا بتوقيت الرياض، يُختار بثبات من بنك الإدارة حسب التاريخ (أو يُثبَّت يدويًا من صفحة «تحدي اليوم»).
+- **الأمان:** نسخة المتصفح بلا إجابة — `correctIndex: -1` وحقل `answer` فارغ؛ التحقق والمكافأة تتم في `/api/daily-challenge/answer` فقط.
+- **الجلسة:** رمز HMAC مرتبط بالجهاز والتاريخ والسؤال، بصلاحية ١٢ ساعة و٥ محاولات كحد أقصى.
+- **المكافأة:** تُمنح مرة واحدة عبر `RewardLedger`، والرصيد السيرفر هو الحقيقة المعروضة.
+- **الأنواع المؤهلة:** `text` و`multiple` فقط (لا تُرسل إجابة الأنواع الأخرى للمتصفح).
+- **الإدارة:** إضافة/إيقاف أسئلة، تثبيت سؤال يوم، مكافأة مخصصة، ومراجعة آخر الجلسات — مع قيد تدقيق لكل عملية.
 
 ### سير عمل المكتبة
 
@@ -96,6 +105,7 @@ prisma generate && prisma migrate deploy && node scripts/seed-all.mjs && next bu
 | `ADMIN_PASSWORD` | قيمة عشوائية طويلة | إلزامي — بدونه تُرفض كل طلبات الإدارة (Fail-Closed) |
 | `ADMIN_USERNAME` | `admin` | اختياري — الافتراضي `admin` |
 | `ADMIN_SESSION_SECRET` | نص عشوائي ≥ 16 حرفاً | اختياري — يُشتق من كلمة المرور إن غاب |
+| `DAILY_SESSION_SECRET` | نص عشوائي ≥ 16 حرفاً | اختياري لتوقيع جلسة التحدي اليومي — يُشتق من `ADMIN_SESSION_SECRET` ثم `ADMIN_PASSWORD` إن غاب |
 
 الجلسة مدتها ٨ ساعات، والكوكي `httpOnly` و`SameSite=Lax` وفي الإنتاج `Secure`.
 للخروج: `POST /api/admin/logout`. حالة الجلسة: `GET /api/admin/session`.
@@ -120,7 +130,8 @@ pg_restore -d "<DATABASE_URL_الجديدة>" --no-owner --no-privileges backup-
 | `GET /api/levels` | خريطة المراحل بالفصول |
 | `GET /api/levels/[id]` | تفاصيل مرحلة بألغازها |
 | `GET /api/leaderboard` | المتصدرون |
-| `GET /api/daily-challenge` | تحدي اليوم |
+| `GET /api/daily-challenge?deviceId=...` | سؤال تحدي اليوم — بلا إجابة، مع رمز جلسة موقّع |
+| `POST /api/daily-challenge/answer` | التحقق السيرفي والمكافأة (الجسم: `{token, answer}`) |
 | `GET /api/recommendation` | توصية ذكية (5 أسئلة) |
 | `POST /api/players/sync` | مزامنة ملف اللاعب |
 
@@ -138,15 +149,18 @@ pg_restore -d "<DATABASE_URL_الجديدة>" --no-owner --no-privileges backup-
 | `POST /api/support` | إرسال رسالة دعم |
 
 **الإدارة** (`/api/admin/*`): books, categories, book-chapters, chapters, levels,
-puzzles, players, reviews, messages, team, quality, audit, stats, skill-tree, settings
-— كلها سليمة ومختبرة، وتنتظر حماية المصادقة.
+puzzles, players, reviews, messages, team, quality, audit, stats, skill-tree, settings,
+`daily` (بنك الأسئلة والجدول والجلسات) — كلها سليمة ومختبرة ومحمية بالمصادقة.
 
-## 9) قاعدة البيانات — 17 نموذجاً
+## 9) قاعدة البيانات — 22 نموذجاً
 
 اللعبة: `Chapter, Level, Puzzle, Cell, Word, MixedStage`
 المكتبة: `BookCategory, Book, BookChapter, BookReview`
 المجتمع: `User, Post, PlayerProfile, SupportMessage, TeamMember`
 النظام: `AuditEntry, PlatformSetting`
+التحدي اليومي: `DailyQuestion, DailySchedule, DailySession, DailyAttempt, RewardLedger`
+
+> الجداول الخمسة الأخيرة جديدة في المرحلة د ولا تعدّل بيانات قائمة — راجع `docs/ROLLBACK.md` للتراجع الآمن.
 
 ## 10) استكشاف الأخطاء السريع
 
@@ -158,4 +172,4 @@ puzzles, players, reviews, messages, team, quality, audit, stats, skill-tree, se
 
 ---
 
-آخر تحديث: نوفمبر 2026 — بعد جولة اختبار شاملة لإدارة المكتبة (44 اختبار API + 21 فحص واجهة، إصلاح P2025).
+آخر تحديث: نوفمبر 2026 — بعد المرحلة د: تحدي اليوم بسؤال واحد يوميًا، جلسة موقّعة وتحقق سيرفري (18 صفحة إدارة، 22 نموذج Prisma).

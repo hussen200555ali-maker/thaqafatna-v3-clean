@@ -103,6 +103,10 @@ model Puzzle {
   parentLinks      MixedStage[]  @relation("ParentPuzzle")
   /** إن كان هذا اللغز محطة داخل بوس — من يملكه */
   stageLinks       MixedStage[]  @relation("StagePuzzle")
+
+  /** بنك أسئلة التحدي اليومي — يُديره فريق الإدارة */
+  dailyBankItems   DailyQuestion[]
+  dailySchedules   DailySchedule[]
 }
 
 /** خلية شبكة متقاطعة — null أو فارغ = خلية معطّلة */
@@ -147,6 +151,86 @@ model MixedStage {
   stagePuzzle    Puzzle @relation("StagePuzzle", fields: [stagePuzzleId], references: [id])
 
   @@index([parentPuzzleId])
+}
+
+/* ============================================================
+   التحدي اليومي — سؤال واحد يوميًا، جلسة موقّعة، وتحقق سيرفري
+   (كل الجداول جديدة؛ لا تعديل على بيانات اللعبة القائمة)
+   ============================================================ */
+
+/** عنصر بنك الأسئلة المؤهلة للتحدي اليومي */
+model DailyQuestion {
+  id        String   @id @default(cuid())
+  puzzleId  String   @unique
+  /** إيقاف مؤقت دون حذف السؤال من البنك */
+  active    Boolean  @default(true)
+  addedAt   DateTime @default(now())
+  puzzle    Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+
+  @@index([active])
+}
+
+/** جدول اليوم — سؤال واحد محدد لمفتاح الرياض YYYY-MM-DD */
+model DailySchedule {
+  /** YYYY-MM-DD بتوقيت الرياض */
+  dateKey        String   @id
+  /** null يعني: اختيار تلقائي ثابت من البنك لهذا اليوم */
+  puzzleId       String?
+  rewardOverride Int?
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  puzzle         Puzzle?  @relation(fields: [puzzleId], references: [id], onDelete: SetNull)
+}
+
+/** جلسة لاعب موقّعة — تمنع التلاعب في الإجابات والمكافآت */
+model DailySession {
+  id          String    @id @default(cuid())
+  deviceId    String
+  dateKey     String
+  puzzleId    String
+  /** SHA-256 للرمز المُصدر — لا يُحفظ الرمز نفسه */
+  tokenHash   String    @unique
+  /** active | correct | expired */
+  status      String    @default("active")
+  attempts    Int       @default(0)
+  reward      Int       @default(0)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  completedAt DateTime?
+  attemptsLog DailyAttempt[]
+
+  /** جلسة واحدة مجانية لكل جهاز في اليوم */
+  @@unique([deviceId, dateKey])
+  @@index([dateKey])
+}
+
+/** سجل محاولات الجلسة — تدقيق وتحليل فقط */
+model DailyAttempt {
+  id        String      @id @default(cuid())
+  sessionId String
+  /** إجابة اللاعب كما أُرسلت (بلا أسرار) */
+  answer    Json
+  correct   Boolean
+  createdAt DateTime    @default(now())
+  session   DailySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+/** مكافآت يومية ممنوحة مرة واحدة — حاجز تكرار صارم */
+model RewardLedger {
+  id        String   @id @default(cuid())
+  deviceId  String
+  /** daily */
+  source    String
+  /** معرّف الجلسة */
+  sourceId  String
+  amount    Int
+  createdAt DateTime @default(now())
+
+  @@unique([source, sourceId])
+  @@index([deviceId])
 }
 
 model User {

@@ -226,6 +226,53 @@ export interface AdminAuditEntry {
   createdAt: string;
 }
 
+/** سؤال في بنك التحدي اليومي (أو مرشح للإضافة) */
+export interface AdminDailyPuzzle {
+  id: string;
+  puzzleId: string;
+  active?: boolean;
+  addedAt?: string;
+  puzzleType: string | null;
+  clue: string | null;
+  levelTitle: string | null;
+  eligible: boolean;
+}
+
+/** تثبيت سؤال ليوم بعينه */
+export interface AdminDailySchedule {
+  dateKey: string;
+  puzzleId: string | null;
+  rewardOverride: number | null;
+  note: string | null;
+  puzzleType: string | null;
+  clue: string | null;
+  levelTitle: string | null;
+}
+
+/** جلسة لاعب في التحدي اليومي */
+export interface AdminDailySession {
+  id: string;
+  deviceId: string;
+  dateKey: string;
+  status: string;
+  attempts: number;
+  reward: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/** استجابة GET /api/admin/daily */
+export interface AdminDailyData {
+  ok: boolean;
+  dateKey: string;
+  today: string;
+  stats: { bank: number; active: number };
+  bank: AdminDailyPuzzle[];
+  schedule: AdminDailySchedule[];
+  candidates: AdminDailyPuzzle[];
+  sessions: AdminDailySession[];
+}
+
 /** إعدادات المنصة العامة — نموذج لوحة الإدارة */
 export interface AdminPlatformSettings {
   appName: string;
