@@ -47,21 +47,24 @@ export function dailyCorrectAnswer(question: Question): string {
 }
 
 /**
- * نسخة عامة من السؤال: بلا إجابة ولا فهرس إجابة،
+ * نسخة عامة من السؤال: بلا إجابة ولا فهرس إجابة ولا شرح — فالشرح في بنك الأسئلة
+ * يذكر الإجابة صراحةً في الغالب، وإرساله للمتصفح قبل الحكم يبطل إخفاءها.
+ * الشرح يُرسل من الخادم داخل رد `/api/daily-challenge/answer` بعد المحاولة فقط،
  * ومع طول الإجابة محسوبًا مسبقًا كي يعمل مُصيّر النص.
  */
 export function publicDailyQuestion(question: Question): Question {
+  const base = { ...question, explanation: undefined };
   if (question.type === "multiple") {
     /* correctIndex = -1 يجعل أي حكم محلي مستحيلًا — الخادم هو الحَكَم */
-    return { ...question, correctIndex: -1 } as Question;
+    return { ...base, correctIndex: -1 } as Question;
   }
   if (question.type === "text") {
     const q = question as TextQuestion;
     return {
-      ...q,
+      ...base,
       answer: "",
       answerLength: q.answerLength && q.answerLength > 0 ? q.answerLength : countArabicLetters(q.answer),
     } as Question;
   }
-  return question;
+  return base;
 }

@@ -25,6 +25,8 @@ interface FeedbackLayerProps {
   question: Question;
   /** نص الإجابة الصحيحة (من وحدة السجل) — يُعرض عند الخطأ */
   correctAnswerText: string | null;
+  /** شرح يأتي من الخادم بعد الحكم — يُستخدم في التحدي اليومي حيث يُجرّد السؤال العام من شرحه */
+  explanationText?: string | null;
   onContinue: () => void;
 }
 
@@ -32,6 +34,7 @@ export function FeedbackLayer({
   status,
   question,
   correctAnswerText,
+  explanationText,
   onContinue,
 }: FeedbackLayerProps) {
   const isCorrect = status === "correct";
@@ -119,15 +122,15 @@ export function FeedbackLayer({
               </div>
             )}
 
-            {/* الشرح التعليمي المشترك */}
-            {question.explanation && (
+            {/* الشرح التعليمي المشترك — في التحدي اليومي يأتي من رد التحقق السيرفي */}
+            {(explanationText ?? question.explanation) && (
               <div className="mt-3 flex items-start gap-2 rounded-xl bg-sand px-3.5 py-3 text-right">
                 <Lightbulb
                   className="mt-0.5 size-4 shrink-0 text-gold-600"
                   aria-hidden="true"
                 />
                 <p className="text-[11.5px] font-medium leading-relaxed text-heritage-900/80">
-                  {question.explanation}
+                  {explanationText ?? question.explanation}
                 </p>
               </div>
             )}

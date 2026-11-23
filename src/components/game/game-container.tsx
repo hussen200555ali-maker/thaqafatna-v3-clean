@@ -72,6 +72,7 @@ export function GameContainer({
 }: GameContainerProps) {
   const isDaily = dailyToken !== undefined;
   const [serverAnswer, setServerAnswer] = useState<string | null>(null);
+  const [serverExplanation, setServerExplanation] = useState<string | null>(null);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
@@ -223,6 +224,8 @@ export function GameContainer({
           setAttemptsLeft(data.attemptsLeft);
         }
 
+        setServerExplanation(data.explanation ?? null);
+
         if (data.correct) {
           setServerAnswer(null);
           /* الرصيد القادم من الخادم هو الحقيقة — نُحدّث المخزن المحلي
@@ -258,6 +261,7 @@ export function GameContainer({
       return;
     }
     setServerAnswer(null);
+    setServerExplanation(null);
     resetQuestionState();
   };
 
@@ -430,6 +434,7 @@ export function GameContainer({
               ? questionModule.correctAnswerText(question)
               : null
         }
+        explanationText={isDaily ? serverExplanation : undefined}
         onContinue={() =>
           isDaily ? handleDailyContinue() : advance("wrong")
         }

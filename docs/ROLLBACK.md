@@ -120,7 +120,8 @@ typescript: { ignoreBuildErrors: true }
 ### ملاحظات تنفيذ المرحلة د
 - خمسة جداول جديدة فقط (`DailyQuestion`, `DailySchedule`, `DailySession`, `DailyAttempt`, `RewardLedger`)
   بلا تعديل بيانات قائمة — الترحيل `20261123000000_daily_challenge` آمن للتطبيق على الإنتاج.
-- بنك اليوم يقتصر على `text` و `multiple`: النسخة العامة تُفرغ `answer` وتجعل `correctIndex = -1`.
+- بنك اليوم يقتصر على `text` و `multiple`: النسخة العامة تُفرغ `answer` وتجعل `correctIndex = -1`
+  وتحذف `explanation` أيضاً (قد يذكر الشرح الإجابة صراحةً) — الشرح يُرسل من الخادم بعد المحاولة فقط.
 - جلسة موقّعة HMAC + تجزئة SHA-256، مرتبطة بالجهاز/التاريخ/السؤال، ١٢ ساعة و٥ محاولات.
 - `dailySession.upsert` بمفتاح `(deviceId,dateKey)` + `RewardLedger.createMany(skipDuplicates)`
   يمنعان منح المكافأة مرتين في الطلبات المتزامنة.
