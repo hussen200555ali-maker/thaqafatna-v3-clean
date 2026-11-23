@@ -106,7 +106,7 @@ typescript: { ignoreBuildErrors: true }
 | أ — إصلاح 418 وتفعيل الفحص | ✅ مدفوعة | `7f6995c28756d9704a894b38e56522ffdc778fb1` |
 | ب — التحقق المتصفحي | ✅ تم | HTML خالٍ من التاريخ + لا أخطاء #418 |
 | ج — المصادقة | ✅ مدفوعة | `63e13ce27c281bcbecdb0258be8c85e35a026a1a` |
-| د — التحدي اليومي | ⏳ | — |
+| د — التحدي اليومي | ✅ مدفوعة | `61184b6` |
 
 ### ملاحظات تنفيذ المرحلة ج
 - حماية `/api/admin/:path*` عبر `src/proxy.ts`؛ المسارات العامة: login/session/logout.
@@ -116,3 +116,16 @@ typescript: { ignoreBuildErrors: true }
   (أعادت `500` فقط لأن قاعدة البيانات المحلية غير متوفرة — لا علاقة بالمصادقة).
 - **مطلوب قبل النشر:** إضافة `ADMIN_PASSWORD` و`ADMIN_USERNAME` و`ADMIN_SESSION_SECRET`
   في Vercel (Production). بدونها سيُقفل الموقع الإداري بالكامل.
+
+### ملاحظات تنفيذ المرحلة د
+- خمسة جداول جديدة فقط (`DailyQuestion`, `DailySchedule`, `DailySession`, `DailyAttempt`, `RewardLedger`)
+  بلا تعديل بيانات قائمة — الترحيل `20261123000000_daily_challenge` آمن للتطبيق على الإنتاج.
+- بنك اليوم يقتصر على `text` و `multiple`: النسخة العامة تُفرغ `answer` وتجعل `correctIndex = -1`.
+- جلسة موقّعة HMAC + تجزئة SHA-256، مرتبطة بالجهاز/التاريخ/السؤال، ١٢ ساعة و٥ محاولات.
+- `dailySession.upsert` بمفتاح `(deviceId,dateKey)` + `RewardLedger.createMany(skipDuplicates)`
+  يمنعان منح المكافأة مرتين في الطلبات المتزامنة.
+- `GET /api/daily-challenge?deviceId=...` يبدأ الجلسة، `POST /api/daily-challenge/answer` هو الحَكَم الوحيد.
+- `GET/POST /api/admin/daily` تدير البنك والجدول والجلسات مع قيد تدقيق لكل عملية.
+- صفحة إدارة جديدة «تحدي اليوم» — أصلحت النص العربي في رسالة البنك الفارغ.
+- فحوص ناجحة: `prisma generate` + `typecheck` + `lint` + `next build` + اختبار وحدات نقية (18 فحص، ALL_PASS).
+- **مطلوب من المستخدم:** إضافة `ADMIN_PASSWORD` في Vercel ثم فحص `/api/admin/session` وصفحة «تحدي اليوم».
